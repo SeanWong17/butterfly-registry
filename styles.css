@@ -224,6 +224,7 @@ a {
 }
 
 .icon-button,
+.language-button,
 .source-button,
 .reset-button {
   border: 1px solid var(--line);
@@ -245,12 +246,14 @@ a {
 }
 
 .icon-button:hover,
+.language-button:hover,
 .source-button:hover,
 .reset-button:hover {
   border-color: var(--ink-soft);
   background: var(--surface-soft);
 }
 
+.language-button,
 .source-button,
 .reset-button {
   height: 38px;
@@ -263,6 +266,7 @@ a {
   font-weight: 650;
 }
 
+.language-button svg,
 .source-button svg,
 .reset-button svg {
   width: 17px;
@@ -633,7 +637,7 @@ main {
 }
 
 .sort-control select {
-  width: 116px;
+  width: 132px;
   height: 34px;
   padding: 0 8px;
   font-size: 12px;
@@ -905,7 +909,7 @@ main {
   border-bottom: 1px solid var(--line-strong);
 }
 
-.audit-key span,
+.audit-key > span,
 .audit-status {
   display: inline-flex;
   align-items: center;
@@ -1343,20 +1347,6 @@ main {
   font-size: 10px;
 }
 
-.document-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 9px 18px;
-  margin-top: 15px;
-}
-
-.document-links a {
-  color: var(--cobalt);
-  font-size: 11px;
-  font-weight: 700;
-  text-underline-offset: 3px;
-}
-
 .fatal-error {
   width: min(560px, calc(100% - 32px));
   margin: 15vh auto;
@@ -1435,12 +1425,15 @@ noscript {
     padding: 0 9px;
   }
 
+  .language-button span,
   .source-button span {
     display: none;
   }
 
+  .language-button,
   .source-button {
     width: 36px;
+    min-width: 36px;
     padding: 0;
   }
 

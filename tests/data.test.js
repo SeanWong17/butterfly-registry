@@ -219,12 +219,12 @@ test('audited distribution, morphology, and taxonomy facts are retained', () => 
   assert.match(byName.get('Troides dohertyi').distribution, /塔劳群岛/);
   assert.match(byName.get('Troides staudingeri').distribution, /马鲁古南部/);
   assert.match(byName.get('Troides vandepolli').distribution, /苏门答腊岛、爪哇岛/);
-  assert.match(byName.get('Troides cuneifera').description, /山地森林种.*1200-2000米/);
-  assert.match(byName.get('Troides miranda').description, /蓝色光泽位于前翅/);
+  assert.match(byName.get('Troides cuneifera').description, /1200-2000米.*山地森林/);
+  assert.match(byName.get('Troides miranda').description, /前翅.*局部蓝色鳞光/);
   assert.match(byName.get('Troides haliphron').description, /金黄色斑组成的窄带/);
   assert.match(byName.get('Papilio chikae').description, /宽阔的蓝绿色金属带/);
-  assert.match(byName.get('Sasakia funebris').description, /蓝黑至蓝紫天鹅绒鳞光/);
-  assert.match(byName.get('Phengaris xiushani').description, /模式产地位于云南怒江/);
+  assert.match(byName.get('Sasakia funebris').description, /蓝黑至蓝紫色鳞光/);
+  assert.match(byName.get('Phengaris xiushani').description, /模式产地记录为云南怒江/);
   assert.match(byName.get('Sasakia pulcherrima').taxonomyNote, /BACKBONE_MATCH_NONE/);
   assert.match(byName.get('Atrophaneura jophon').taxonomyNote, /Pachliopta jophon/);
   assert.match(byName.get('Atrophaneura pandiyana').taxonomyNote, /Pachliopta pandiyana/);

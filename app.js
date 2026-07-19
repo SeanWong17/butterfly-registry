@@ -2,16 +2,32 @@
   "use strict";
 
   const utils = window.CatalogUtils;
+  const i18n = window.WingI18n;
   const data = window.BUTTERFLY_DATA || (typeof BUTTERFLY_DATA !== "undefined" ? BUTTERFLY_DATA : null);
 
-  if (!utils || !data) {
-    document.body.innerHTML = '<main class="fatal-error"><h1>档案加载失败</h1><p>数据文件或目录工具未能载入。</p></main>';
+  if (!utils || !i18n || !data) {
+    document.body.innerHTML = '<main class="fatal-error"><h1>档案加载失败 / Archive failed to load</h1><p>数据文件或应用工具未能载入。 The catalog data or application utilities could not be loaded.</p></main>';
     return;
   }
 
   const allSpecies = utils.flattenCatalog(data);
+  allSpecies.forEach((entry) => {
+    const translation = i18n.SPECIES[entry.scientificName] || {};
+    entry.searchText = utils.normalizeText([
+      entry.searchText,
+      translation.name,
+      translation.range,
+      translation.profile,
+      translation.note,
+      translation.taxonomy,
+      translation.citesBasis,
+      i18n.TAXA[entry.family],
+      i18n.TAXA[entry.genus]
+    ].join(" | "));
+  });
   const totals = utils.summarize(allSpecies);
   const state = {
+    language: resolveInitialLanguage(),
     view: "cabinet",
     query: "",
     family: "all",
@@ -54,8 +70,72 @@
     closeSources: document.getElementById("close-sources"),
     scopeNote: document.getElementById("scope-note"),
     verifiedDate: document.getElementById("verified-date"),
-    sourceList: document.getElementById("source-list")
+    sourceList: document.getElementById("source-list"),
+    metaDescription: document.getElementById("meta-description"),
+    languageToggle: document.getElementById("language-toggle"),
+    languageLabel: document.getElementById("language-label")
   };
+
+  function resolveInitialLanguage() {
+    const requested = new URLSearchParams(window.location.search).get("lang");
+    if (requested === "zh" || requested === "en") return requested;
+
+    try {
+      const stored = window.localStorage.getItem("wing-register-language");
+      if (stored === "zh" || stored === "en") return stored;
+    } catch (_) {
+      // Storage can be unavailable in privacy-restricted contexts.
+    }
+
+    return "zh";
+  }
+
+  function t(key, values) {
+    return i18n.translate(state.language, key, values);
+  }
+
+  function speciesText(entry) {
+    const translated = i18n.SPECIES[entry.scientificName] || {};
+    if (state.language === "en") {
+      return {
+        name: translated.name || entry.chineseName,
+        range: translated.range || entry.distribution,
+        profile: translated.profile || entry.description,
+        note: translated.note || entry.remarks,
+        taxonomy: translated.taxonomy || entry.taxonomyNote,
+        citesBasis: translated.citesBasis || entry.citesBasis
+      };
+    }
+
+    return {
+      name: entry.chineseName,
+      range: entry.distribution,
+      profile: entry.description,
+      note: entry.remarks,
+      taxonomy: entry.taxonomyNote,
+      citesBasis: entry.citesBasis
+    };
+  }
+
+  function taxonCommonName(scientificName, chineseName) {
+    if (state.language === "en") return i18n.TAXA[scientificName] || "";
+    return chineseName || "";
+  }
+
+  function rankLabel(rank) {
+    const key = `rank${String(rank || "").charAt(0).toUpperCase()}${String(rank || "").slice(1)}`;
+    return t(key);
+  }
+
+  function iucnLabel(entry) {
+    return entry.iucnCode ? t(`iucn${entry.iucnCode}`) : t("unrecorded");
+  }
+
+  function chinaLevelLabel(level) {
+    if (level === "I") return t("chinaLevelOne");
+    if (level === "II") return t("chinaLevelTwo");
+    return t("notListed");
+  }
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -81,6 +161,59 @@
     }
   }
 
+  function localizeStaticContent() {
+    document.documentElement.lang = state.language === "en" ? "en" : "zh-CN";
+    document.body.dataset.language = state.language;
+    document.title = t("documentTitle");
+    elements.metaDescription.setAttribute("content", t("metaDescription"));
+
+    document.querySelectorAll("[data-i18n]").forEach((node) => {
+      node.textContent = t(node.dataset.i18n);
+    });
+    document.querySelectorAll("[data-i18n-aria]").forEach((node) => {
+      node.setAttribute("aria-label", t(node.dataset.i18nAria));
+    });
+    document.querySelectorAll("[data-i18n-title]").forEach((node) => {
+      node.setAttribute("title", t(node.dataset.i18nTitle));
+    });
+    document.querySelectorAll("[data-i18n-placeholder]").forEach((node) => {
+      node.setAttribute("placeholder", t(node.dataset.i18nPlaceholder));
+    });
+
+    elements.languageLabel.textContent = t("language");
+    elements.languageToggle.setAttribute("title", t("languageTitle"));
+    elements.languageToggle.setAttribute("aria-label", t("languageTitle"));
+  }
+
+  function persistLanguage(language) {
+    try {
+      window.localStorage.setItem("wing-register-language", language);
+    } catch (_) {
+      // The query parameter still makes the selected language shareable.
+    }
+  }
+
+  function updateLanguageUrl() {
+    const url = new URL(window.location.href);
+    if (state.language === "en") url.searchParams.set("lang", "en");
+    else url.searchParams.delete("lang");
+    window.history.replaceState(null, "", url.href);
+  }
+
+  function setLanguage(language) {
+    state.language = language === "en" ? "en" : "zh";
+    persistLanguage(state.language);
+    updateLanguageUrl();
+    localizeStaticContent();
+    populateTaxonomyFilters();
+    renderSources();
+    renderResults();
+
+    const selected = findSpecies(state.selectedId);
+    if (selected) renderDetail(selected);
+    iconize();
+  }
+
   function uniqueTaxa(key, chineseKey, source) {
     const values = new Map();
     source.forEach((entry) => {
@@ -100,16 +233,18 @@
 
     taxa.forEach((taxon) => {
       const option = document.createElement("option");
+      const commonName = taxonCommonName(taxon.scientificName, taxon.chineseName);
       option.value = taxon.scientificName;
-      option.textContent = taxon.chineseName
-        ? `${taxon.chineseName} · ${taxon.scientificName}`
+      option.textContent = commonName
+        ? `${commonName} · ${taxon.scientificName}`
         : taxon.scientificName;
       select.append(option);
     });
   }
 
   function populateTaxonomyFilters() {
-    appendTaxonOptions(elements.family, uniqueTaxa("family", "familyChinese", allSpecies), "全部科");
+    appendTaxonOptions(elements.family, uniqueTaxa("family", "familyChinese", allSpecies), t("allFamilies"));
+    elements.family.value = state.family;
     refreshGenusOptions();
   }
 
@@ -124,7 +259,7 @@
       state.genus = "all";
     }
 
-    appendTaxonOptions(elements.genus, genera, "全部属");
+    appendTaxonOptions(elements.genus, genera, t("allGenera"));
     elements.genus.value = state.genus;
   }
 
@@ -138,11 +273,11 @@
 
   function renderSummary() {
     const metrics = [
-      { token: "", value: totals.total, label: "名录条目", className: "total" },
+      { token: "", value: totals.total, label: t("totalEntries"), className: "total" },
       { token: "cites-I", value: totals.citesI, label: "CITES I", className: "cites-i" },
       { token: "cites-II", value: totals.citesII, label: "CITES II", className: "cites-ii" },
-      { token: "china-I", value: totals.chinaI, label: "中国一级", className: "china-i" },
-      { token: "china-II", value: totals.chinaII, label: "中国二级", className: "china-ii" }
+      { token: "china-I", value: totals.chinaI, label: t("chinaLevelOne"), className: "china-i" },
+      { token: "china-II", value: totals.chinaII, label: t("chinaLevelTwo"), className: "china-ii" }
     ];
 
     elements.summaryStrip.innerHTML = metrics.map((metric) => {
@@ -167,7 +302,8 @@
       badges.push(`<span class="status-badge cites-${level.cites.toLowerCase()}">CITES ${escapeHtml(level.cites)}</span>`);
     }
     if (level.chinaLevel) {
-      badges.push(`<span class="status-badge china-${level.chinaLevel.toLowerCase()}">中国${level.chinaLevel === "I" ? "一级" : "二级"}</span>`);
+      const label = level.chinaLevel === "I" ? t("chinaLevelOne") : t("chinaLevelTwo");
+      badges.push(`<span class="status-badge china-${level.chinaLevel.toLowerCase()}">${escapeHtml(label)}</span>`);
     }
     if (includeIucn && entry.iucnCode) {
       badges.push(`<span class="status-badge iucn">IUCN ${escapeHtml(entry.iucnCode)}</span>`);
@@ -179,25 +315,26 @@
   function specimenCard(entry, imageIndex) {
     const selected = state.selectedId === entry.id;
     const loading = imageIndex < 8 ? "eager" : "lazy";
+    const localized = speciesText(entry);
 
     return `
       <article class="specimen-drawer${selected ? " is-selected" : ""}" data-open="${escapeHtml(entry.id)}"
-        tabindex="0" role="button" aria-label="打开${escapeHtml(entry.chineseName)}档案" aria-current="${selected ? "true" : "false"}">
+        tabindex="0" role="button" aria-label="${escapeHtml(t("openRecord", { name: localized.name }))}" aria-current="${selected ? "true" : "false"}">
         <div class="drawer-number">
           <span>${escapeHtml(entry.code)}</span>
           <span>${escapeHtml(entry.family)}</span>
         </div>
         <div class="specimen-stage">
-          <img src="${escapeHtml(entry.imagePath)}" alt="${escapeHtml(entry.chineseName)}背面展翅导览图"
+          <img src="${escapeHtml(entry.imagePath)}" alt="${escapeHtml(t("specimenAlt", { name: localized.name }))}"
             loading="${loading}" decoding="async" width="1024" height="640">
           <div class="protection-tabs">${protectionBadges(entry, true)}</div>
         </div>
         <div class="drawer-caption">
-          <h3>${escapeHtml(entry.chineseName)}</h3>
+          <h3>${escapeHtml(localized.name)}</h3>
           <p class="scientific-name">${escapeHtml(entry.scientificName)}</p>
-          <p class="drawer-range" title="${escapeHtml(entry.distribution)}">${escapeHtml(entry.distribution)}</p>
+          <p class="drawer-range" title="${escapeHtml(localized.range)}">${escapeHtml(localized.range)}</p>
         </div>
-        ${entry.taxonomyNote ? '<span class="taxonomy-flag" title="含分类口径说明">TAXON NOTE</span>' : ""}
+        ${entry.taxonomyNote ? `<span class="taxonomy-flag" title="${escapeHtml(t("taxonomyFlag"))}">${escapeHtml(t("taxonomyFlagShort"))}</span>` : ""}
       </article>
     `;
   }
@@ -207,9 +344,9 @@
       elements.cabinet.innerHTML = `
         <div class="empty-state">
           <i data-lucide="search-x" aria-hidden="true"></i>
-          <h2>没有匹配的档案</h2>
-          <p>当前筛选条件没有交集。</p>
-          <button type="button" data-empty-reset>清除筛选</button>
+          <h2>${escapeHtml(t("emptyTitle"))}</h2>
+          <p>${escapeHtml(t("emptyText"))}</p>
+          <button type="button" data-empty-reset>${escapeHtml(t("clearFilters"))}</button>
         </div>
       `;
       iconize();
@@ -220,15 +357,16 @@
     let imageIndex = 0;
     elements.cabinet.innerHTML = groups.map((group, groupIndex) => {
       const cards = group.items.map((entry) => specimenCard(entry, imageIndex++)).join("");
+      const commonName = taxonCommonName(group.label, group.chineseName);
       const groupLabel = state.sort === "taxonomy"
-        ? `<p>GENUS ${String(groupIndex + 1).padStart(2, "0")}</p><h2><i>${escapeHtml(group.label)}</i>${group.chineseName ? `<span>${escapeHtml(group.chineseName)}</span>` : ""}</h2>`
-        : `<p>REGISTER</p><h2>${escapeHtml(group.label)}</h2>`;
+        ? `<p>${escapeHtml(t("genusIndex", { index: String(groupIndex + 1).padStart(2, "0") }))}</p><h2><i>${escapeHtml(group.label)}</i>${commonName ? `<span>${escapeHtml(commonName)}</span>` : ""}</h2>`
+        : `<p>REGISTER</p><h2>${escapeHtml(t("results"))}</h2>`;
 
       return `
         <section class="genus-shelf" aria-labelledby="group-${groupIndex}">
           <header class="shelf-label" id="group-${groupIndex}">
             <div>${groupLabel}</div>
-            <span>${String(group.items.length).padStart(2, "0")} 件</span>
+            <span>${escapeHtml(t("items", { count: String(group.items.length).padStart(2, "0") }))}</span>
           </header>
           <div class="specimen-grid">${cards}</div>
         </section>
@@ -236,34 +374,35 @@
     }).join("");
   }
 
-  function auditStatus(value, type, prefix) {
+  function auditStatus(value, type, label) {
     if (!value) return '<span class="audit-empty">—</span>';
-    return `<span class="audit-status"><i class="status-dot ${escapeHtml(type)}" aria-hidden="true"></i>${escapeHtml(prefix)}${escapeHtml(value)}</span>`;
+    return `<span class="audit-status"><i class="status-dot ${escapeHtml(type)}" aria-hidden="true"></i>${escapeHtml(label)}</span>`;
   }
 
   function renderAudit() {
     if (!visibleSpecies.length) {
-      elements.auditBody.innerHTML = '<tr><td colspan="6" class="empty-table">没有匹配的名录条目</td></tr>';
+      elements.auditBody.innerHTML = `<tr><td colspan="6" class="empty-table">${escapeHtml(t("noResults"))}</td></tr>`;
       return;
     }
 
     elements.auditBody.innerHTML = visibleSpecies.map((entry) => {
       const level = entry.protectionLevel || {};
+      const localized = speciesText(entry);
       const chinaType = level.chinaLevel ? `china-${level.chinaLevel.toLowerCase()}` : "";
       const citesType = level.cites ? `cites-${level.cites.toLowerCase()}` : "";
       return `
-        <tr data-open="${escapeHtml(entry.id)}" tabindex="0" aria-label="打开${escapeHtml(entry.chineseName)}档案"
+        <tr data-open="${escapeHtml(entry.id)}" tabindex="0" aria-label="${escapeHtml(t("openRecord", { name: localized.name }))}"
           class="${state.selectedId === entry.id ? "is-selected" : ""}">
           <td><span class="table-code">${escapeHtml(entry.code)}</span></td>
           <td>
-            <strong>${escapeHtml(entry.chineseName)}</strong>
+            <strong>${escapeHtml(localized.name)}</strong>
             <i>${escapeHtml(entry.scientificName)}</i>
           </td>
-          <td>${auditStatus(level.cites, citesType, "附录 ")}</td>
-          <td>${auditStatus(level.chinaLevel, chinaType, "国家 ")}</td>
-          <td>${entry.iucnCode ? `<span class="iucn-code">${escapeHtml(entry.iucnCode)}</span>` : '<span class="audit-empty">未记录</span>'}</td>
+          <td>${auditStatus(level.cites, citesType, t("appendix", { level: level.cites }))}</td>
+          <td>${auditStatus(level.chinaLevel, chinaType, chinaLevelLabel(level.chinaLevel))}</td>
+          <td>${entry.iucnCode ? `<span class="iucn-code">${escapeHtml(entry.iucnCode)}</span>` : `<span class="audit-empty">${escapeHtml(t("noRecord"))}</span>`}</td>
           <td>${entry.taxonomyNote
-            ? '<span class="audit-status"><i class="status-dot taxonomy" aria-hidden="true"></i>需对照</span>'
+            ? `<span class="audit-status"><i class="status-dot taxonomy" aria-hidden="true"></i>${escapeHtml(t("compareNeeded"))}</span>`
             : '<span class="audit-empty">—</span>'}</td>
         </tr>
       `;
@@ -272,8 +411,11 @@
 
   function renderResults() {
     visibleSpecies = utils.filterCatalog(allSpecies, state);
+    if (state.language === "en" && state.sort === "chinese") {
+      visibleSpecies.sort((a, b) => speciesText(a).name.localeCompare(speciesText(b).name, "en"));
+    }
     elements.resultIndex.textContent = String(visibleSpecies.length).padStart(3, "0");
-    elements.filterSummary.textContent = `显示 ${visibleSpecies.length} / ${totals.total}`;
+    elements.filterSummary.textContent = t("showing", { visible: visibleSpecies.length, total: totals.total });
     renderSummary();
     renderCabinet();
     renderAudit();
@@ -283,7 +425,7 @@
   function lineageHtml(entry) {
     return entry.lineage.map((taxon) => `
       <span>
-        <small>${escapeHtml(taxon.rank)}</small>
+        <small>${escapeHtml(rankLabel(taxon.rank))}</small>
         <i>${escapeHtml(taxon.scientificName)}</i>
       </span>
     `).join("");
@@ -295,63 +437,67 @@
       <dl class="detail-status-grid">
         <div>
           <dt>CITES</dt>
-          <dd>${level.cites ? `附录 ${escapeHtml(level.cites)}` : "未列入"}</dd>
+          <dd>${level.cites ? escapeHtml(t("appendix", { level: level.cites })) : escapeHtml(t("notListed"))}</dd>
         </div>
         <div>
-          <dt>中国名录</dt>
-          <dd>${level.chinaLevel ? `国家${level.chinaLevel === "I" ? "一级" : "二级"}` : "未列入"}</dd>
+          <dt>${escapeHtml(t("chinaList"))}</dt>
+          <dd>${escapeHtml(chinaLevelLabel(level.chinaLevel))}</dd>
         </div>
         <div>
           <dt>IUCN</dt>
-          <dd>${entry.iucnStatus ? escapeHtml(entry.iucnStatus) : "本页未记录"}</dd>
+          <dd>${escapeHtml(iucnLabel(entry))}</dd>
         </div>
       </dl>
     `;
   }
 
   function renderDetail(entry) {
-    const alternatives = (entry.alternativeChineseNames || []).length
-      ? `<p class="alternative-names">别名：${entry.alternativeChineseNames.map(escapeHtml).join("、")}</p>`
+    const localized = speciesText(entry);
+    const chineseNames = [entry.chineseName, ...(entry.alternativeChineseNames || [])];
+    const alternatives = state.language === "en"
+      ? `<p class="alternative-names">${escapeHtml(t("chineseName"))}: ${chineseNames.map(escapeHtml).join(" · ")}</p>`
+      : (entry.alternativeChineseNames || []).length
+        ? `<p class="alternative-names">${escapeHtml(t("aliases", { names: entry.alternativeChineseNames.join("、") }))}</p>`
+        : "";
+    const citesBasis = localized.citesBasis
+      ? `<section class="detail-section"><h3>${escapeHtml(t("citesBasis"))}</h3><p>${escapeHtml(localized.citesBasis)}</p></section>`
       : "";
-    const citesBasis = entry.citesBasis
-      ? `<section class="detail-section"><h3>CITES 列名依据</h3><p>${escapeHtml(entry.citesBasis)}</p></section>`
-      : "";
-    const taxonomy = entry.taxonomyNote
-      ? `<section class="detail-section taxonomy-section"><p class="section-label">TAXONOMY NOTE</p><h3>分类口径</h3><p>${escapeHtml(entry.taxonomyNote)}</p></section>`
+    const taxonomy = localized.taxonomy
+      ? `<section class="detail-section taxonomy-section"><p class="section-label">TAXONOMY NOTE</p><h3>${escapeHtml(t("taxonomy"))}</h3><p>${escapeHtml(localized.taxonomy)}</p></section>`
       : "";
 
     elements.detailCode.textContent = entry.code;
     elements.detailContent.innerHTML = `
       <figure class="detail-specimen">
-        <img src="${escapeHtml(entry.imagePath)}" alt="${escapeHtml(entry.chineseName)}背面展翅导览图" width="1024" height="640">
-        <figcaption>导览图像 · 非科研鉴定依据</figcaption>
+        <img src="${escapeHtml(entry.imagePath)}" alt="${escapeHtml(t("specimenAlt", { name: localized.name }))}" width="1024" height="640">
+        <figcaption>${escapeHtml(t("guideImageCaption"))}</figcaption>
       </figure>
 
       <section class="detail-identity">
         <div class="detail-badges">${protectionBadges(entry, true)}</div>
-        <h2>${escapeHtml(entry.chineseName)}</h2>
+        <h2>${escapeHtml(localized.name)}</h2>
         <p class="detail-latin"><i>${escapeHtml(entry.scientificName)}</i> ${escapeHtml(entry.author)}</p>
         ${alternatives}
       </section>
 
-      <div class="lineage-strip" aria-label="分类路径">${lineageHtml(entry)}</div>
+      <div class="lineage-strip" aria-label="${escapeHtml(t("lineage"))}">${lineageHtml(entry)}</div>
       ${detailStatus(entry)}
 
       <section class="detail-section range-section">
         <p class="section-label">RANGE</p>
-        <h3>分布</h3>
-        <p>${escapeHtml(entry.distribution)}</p>
+        <h3>${escapeHtml(t("range"))}</h3>
+        <p>${escapeHtml(localized.range)}</p>
       </section>
 
       <section class="detail-section">
         <p class="section-label">PROFILE</p>
-        <h3>物种档案</h3>
-        <p>${escapeHtml(entry.description)}</p>
+        <h3>${escapeHtml(t("profile"))}</h3>
+        <p>${escapeHtml(localized.profile)}</p>
       </section>
 
       <section class="detail-section">
-        <h3>名录备注</h3>
-        <p>${escapeHtml(entry.remarks)}</p>
+        <h3>${escapeHtml(t("catalogNote"))}</h3>
+        <p>${escapeHtml(localized.note)}</p>
       </section>
       ${taxonomy}
       ${citesBasis}
@@ -489,13 +635,15 @@
 
   function renderSources() {
     const methodology = data.methodology || {};
-    elements.scopeNote.textContent = methodology.scopeNote || "统计对象为本页名录条目。";
+    const localizedSources = i18n.SOURCE_TEXT[state.language] || i18n.SOURCE_TEXT.zh;
+    elements.scopeNote.textContent = t("scopeNote");
     elements.verifiedDate.textContent = methodology.lastVerified || "—";
     elements.sourceList.innerHTML = (methodology.sources || []).map((source, index) => `
-      <a href="${escapeHtml(safeExternalUrl(source.url))}" target="_blank" rel="noopener noreferrer">
+      <a href="${escapeHtml(safeExternalUrl(source.url))}" target="_blank" rel="noopener noreferrer"
+        aria-label="${escapeHtml(t("sourceVisit", { name: localizedSources[index]?.name || source.name }))}">
         <span>${String(index + 1).padStart(2, "0")}</span>
-        <strong>${escapeHtml(source.name)}</strong>
-        <small>${escapeHtml(source.scope)}</small>
+        <strong>${escapeHtml(localizedSources[index]?.name || source.name)}</strong>
+        <small>${escapeHtml(localizedSources[index]?.scope || source.scope)}</small>
       </a>
     `).join("");
   }
@@ -605,6 +753,9 @@
 
     elements.openSources.addEventListener("click", openSources);
     elements.closeSources.addEventListener("click", closeSources);
+    elements.languageToggle.addEventListener("click", () => {
+      setLanguage(state.language === "en" ? "zh" : "en");
+    });
     elements.sourceDialog.addEventListener("click", (event) => {
       if (event.target === elements.sourceDialog) closeSources();
     });
@@ -626,6 +777,8 @@
   }
 
   function initialize() {
+    localizeStaticContent();
+    persistLanguage(state.language);
     populateTaxonomyFilters();
     renderFilterCounts();
     renderSources();

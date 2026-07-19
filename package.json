@@ -5,7 +5,7 @@
   "description": "A digital specimen register for 58 protected butterfly catalog entries.",
   "scripts": {
     "dev": "python3 -m http.server 4173",
-    "check": "node --check data.js && node --check catalog.js && node --check app.js",
+    "check": "node --check data.js && node --check catalog.js && node --check i18n.js && node --check app.js",
     "test": "node --test tests/*.test.js"
   }
 }
