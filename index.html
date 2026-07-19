@@ -103,16 +103,6 @@
           </label>
         </fieldset>
 
-        <fieldset class="filter-group archive-flag-group">
-          <legend data-i18n="archiveFlags">档案标记</legend>
-          <label class="check-row">
-            <input type="checkbox" name="taxonomy-note" value="taxonomy-note">
-            <span class="status-dot taxonomy" aria-hidden="true"></span>
-            <span data-i18n="taxonomyNotes">分类口径说明</span>
-            <span class="filter-count" id="count-taxonomy">0</span>
-          </label>
-        </fieldset>
-
         <div class="filter-group select-group">
           <label for="family-filter" data-i18n="family">科</label>
           <select id="family-filter">
@@ -185,12 +175,19 @@
           <p data-i18n="auditIntro">法定名录、国际公约与全球分类数据库并不总采用相同的物种边界。这里保留本页采用的口径，不把“覆盖条目数”误写为全球独立物种数。</p>
         </header>
 
-        <div class="audit-key" aria-label="状态图例" data-i18n-aria="statusLegend">
-          <span><i class="status-dot cites-i" aria-hidden="true"></i>CITES I</span>
-          <span><i class="status-dot cites-ii" aria-hidden="true"></i>CITES II</span>
-          <span><i class="status-dot china-i" aria-hidden="true"></i><span data-i18n="chinaLevelOne">中国一级</span></span>
-          <span><i class="status-dot china-ii" aria-hidden="true"></i><span data-i18n="chinaLevelTwo">中国二级</span></span>
-          <span><i class="status-dot taxonomy" aria-hidden="true"></i><span data-i18n="taxonomyNotes">分类口径说明</span></span>
+        <div class="audit-toolbar">
+          <div class="audit-key" aria-label="状态图例" data-i18n-aria="statusLegend">
+            <span><i class="status-dot cites-i" aria-hidden="true"></i>CITES I</span>
+            <span><i class="status-dot cites-ii" aria-hidden="true"></i>CITES II</span>
+            <span><i class="status-dot china-i" aria-hidden="true"></i><span data-i18n="chinaLevelOne">中国一级</span></span>
+            <span><i class="status-dot china-ii" aria-hidden="true"></i><span data-i18n="chinaLevelTwo">中国二级</span></span>
+            <span><i class="status-dot taxonomy" aria-hidden="true"></i><span data-i18n="taxonomyNotes">分类口径说明</span></span>
+          </div>
+          <button class="audit-note-toggle" id="audit-note-toggle" type="button" aria-pressed="false">
+            <i data-lucide="list-filter" aria-hidden="true"></i>
+            <span data-i18n="auditTaxonomyOnly">只看需核对</span>
+            <strong id="audit-note-count">8</strong>
+          </button>
         </div>
 
         <div class="audit-table-wrap">
@@ -262,6 +259,41 @@
         <h3 data-i18n="imageOriginTitle">图像说明</h3>
         <p data-i18n="imageOriginText">现有导览图基于公开数据制作并统一处理，仅用于浏览展示。</p>
       </section>
+    </div>
+  </dialog>
+
+  <dialog class="image-viewer" id="image-viewer" aria-labelledby="image-viewer-title">
+    <div class="image-viewer-shell">
+      <header class="image-viewer-toolbar">
+        <div class="image-viewer-identity">
+          <span id="image-viewer-code">WR-000</span>
+          <h2 id="image-viewer-title" data-i18n="imageViewer">大图查看</h2>
+        </div>
+        <div class="image-viewer-actions">
+          <button class="icon-button" id="image-zoom-out" type="button" title="缩小" data-i18n-title="zoomOut" data-i18n-aria="zoomOut">
+            <i data-lucide="zoom-out" aria-hidden="true"></i>
+            <span class="sr-only" data-i18n="zoomOut">缩小</span>
+          </button>
+          <button class="icon-button" id="image-zoom-reset" type="button" title="恢复适配" data-i18n-title="resetZoom" data-i18n-aria="resetZoom">
+            <i data-lucide="rotate-ccw" aria-hidden="true"></i>
+            <span class="sr-only" data-i18n="resetZoom">恢复适配</span>
+          </button>
+          <output id="image-zoom-level" aria-live="polite">100%</output>
+          <button class="icon-button" id="image-zoom-in" type="button" title="放大" data-i18n-title="zoomIn" data-i18n-aria="zoomIn">
+            <i data-lucide="zoom-in" aria-hidden="true"></i>
+            <span class="sr-only" data-i18n="zoomIn">放大</span>
+          </button>
+          <button class="icon-button" id="close-image-viewer" type="button" title="关闭大图" data-i18n-title="closeImageViewer" data-i18n-aria="closeImageViewer">
+            <i data-lucide="x" aria-hidden="true"></i>
+            <span class="sr-only" data-i18n="closeImageViewer">关闭大图</span>
+          </button>
+        </div>
+      </header>
+      <div class="image-viewer-viewport" id="image-viewer-viewport">
+        <div class="image-viewer-canvas" id="image-viewer-canvas">
+          <img id="image-viewer-image" alt="" draggable="false">
+        </div>
+      </div>
     </div>
   </dialog>
 

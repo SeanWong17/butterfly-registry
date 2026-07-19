@@ -34,12 +34,14 @@
     genus: "all",
     iucn: "all",
     protection: new Set(),
-    taxonomyNote: false,
+    auditTaxonomyOnly: false,
     sort: "taxonomy",
     selectedId: ""
   };
   let visibleSpecies = allSpecies.slice();
   let detailTrigger = null;
+  let imageViewerZoom = 1;
+  const imageZoomSteps = [1, 1.25, 1.5, 2, 2.5, 3];
 
   const elements = {
     appFrame: document.getElementById("app-frame"),
@@ -47,6 +49,8 @@
     auditView: document.getElementById("audit-view"),
     cabinet: document.getElementById("specimen-cabinet"),
     auditBody: document.getElementById("audit-body"),
+    auditNoteToggle: document.getElementById("audit-note-toggle"),
+    auditNoteCount: document.getElementById("audit-note-count"),
     summaryStrip: document.getElementById("summary-strip"),
     resultIndex: document.getElementById("result-index"),
     filterSummary: document.getElementById("filter-summary"),
@@ -75,7 +79,18 @@
     sourceList: document.getElementById("source-list"),
     metaDescription: document.getElementById("meta-description"),
     languageToggle: document.getElementById("language-toggle"),
-    languageLabel: document.getElementById("language-label")
+    languageLabel: document.getElementById("language-label"),
+    imageViewer: document.getElementById("image-viewer"),
+    imageViewerCode: document.getElementById("image-viewer-code"),
+    imageViewerTitle: document.getElementById("image-viewer-title"),
+    imageViewerViewport: document.getElementById("image-viewer-viewport"),
+    imageViewerCanvas: document.getElementById("image-viewer-canvas"),
+    imageViewerImage: document.getElementById("image-viewer-image"),
+    imageZoomOut: document.getElementById("image-zoom-out"),
+    imageZoomReset: document.getElementById("image-zoom-reset"),
+    imageZoomLevel: document.getElementById("image-zoom-level"),
+    imageZoomIn: document.getElementById("image-zoom-in"),
+    closeImageViewer: document.getElementById("close-image-viewer")
   };
 
   function resolveInitialLanguage() {
@@ -270,7 +285,6 @@
     document.getElementById("count-cites-ii").textContent = totals.citesII;
     document.getElementById("count-china-i").textContent = totals.chinaI;
     document.getElementById("count-china-ii").textContent = totals.chinaII;
-    document.getElementById("count-taxonomy").textContent = totals.taxonomyNotes;
   }
 
   function renderSummary() {
@@ -284,8 +298,8 @@
 
     elements.summaryStrip.innerHTML = metrics.map((metric) => {
       const active = metric.token
-        ? state.protection.size === 1 && state.protection.has(metric.token) && !state.taxonomyNote
-        : state.protection.size === 0 && !state.taxonomyNote;
+        ? state.protection.size === 1 && state.protection.has(metric.token)
+        : state.protection.size === 0;
       return `
         <button class="summary-metric ${escapeHtml(metric.className)}" type="button"
           data-summary-filter="${escapeHtml(metric.token)}" aria-pressed="${active}">
@@ -386,12 +400,17 @@
   }
 
   function renderAudit() {
-    if (!visibleSpecies.length) {
+    const taxonomyNotes = visibleSpecies.filter((entry) => Boolean(entry.taxonomyNote));
+    const auditSpecies = state.auditTaxonomyOnly ? taxonomyNotes : visibleSpecies;
+    elements.auditNoteToggle.setAttribute("aria-pressed", String(state.auditTaxonomyOnly));
+    elements.auditNoteCount.textContent = String(taxonomyNotes.length);
+
+    if (!auditSpecies.length) {
       elements.auditBody.innerHTML = `<tr><td colspan="6" class="empty-table">${escapeHtml(t("noResults"))}</td></tr>`;
       return;
     }
 
-    elements.auditBody.innerHTML = visibleSpecies.map((entry) => {
+    elements.auditBody.innerHTML = auditSpecies.map((entry) => {
       const level = entry.protectionLevel || {};
       const localized = speciesText(entry);
       const chinaType = level.chinaLevel ? `china-${level.chinaLevel.toLowerCase()}` : "";
@@ -475,7 +494,12 @@
     elements.detailCode.textContent = entry.code;
     elements.detailContent.innerHTML = `
       <figure class="detail-specimen">
-        <img src="${escapeHtml(entry.imagePath)}" alt="${escapeHtml(t("specimenAlt", { name: localized.name }))}" width="1024" height="640">
+        <button class="detail-image-button" type="button" data-open-image
+          title="${escapeHtml(t("openLargeImage", { name: localized.name }))}"
+          aria-label="${escapeHtml(t("openLargeImage", { name: localized.name }))}">
+          <img src="${escapeHtml(entry.imagePath)}" alt="${escapeHtml(t("specimenAlt", { name: localized.name }))}" width="1024" height="640">
+          <span class="detail-image-action" aria-hidden="true"><i data-lucide="maximize-2"></i></span>
+        </button>
         <figcaption>${escapeHtml(t("guideImageCaption"))}</figcaption>
       </figure>
 
@@ -521,6 +545,7 @@
     if (options?.trigger) detailTrigger = options.trigger;
     state.selectedId = id;
     renderDetail(entry);
+    iconize();
     elements.detailPanel.inert = false;
     elements.detailPanel.setAttribute("aria-hidden", "false");
     elements.appFrame.classList.add("detail-open");
@@ -618,7 +643,6 @@
     elements.filterForm.querySelectorAll('input[name="protection"]').forEach((input) => {
       input.checked = state.protection.has(input.value);
     });
-    elements.filterForm.querySelector('input[name="taxonomy-note"]').checked = state.taxonomyNote;
   }
 
   function resetFilters() {
@@ -628,7 +652,6 @@
     state.genus = "all";
     state.iucn = "all";
     state.protection.clear();
-    state.taxonomyNote = false;
     state.sort = "taxonomy";
     elements.sort.value = state.sort;
     refreshGenusOptions();
@@ -644,6 +667,78 @@
   function closeMobileFilters() {
     document.body.classList.remove("filters-open");
     elements.openFilters.setAttribute("aria-expanded", "false");
+  }
+
+  function renderImageViewerZoom(options) {
+    if (!elements.imageViewerImage.naturalWidth || !elements.imageViewer.open) return;
+
+    const viewport = elements.imageViewerViewport;
+    const oldCenterX = viewport.scrollWidth
+      ? (viewport.scrollLeft + viewport.clientWidth / 2) / viewport.scrollWidth
+      : 0.5;
+    const oldCenterY = viewport.scrollHeight
+      ? (viewport.scrollTop + viewport.clientHeight / 2) / viewport.scrollHeight
+      : 0.5;
+    const padding = viewport.clientWidth < 600 ? 16 : 36;
+    const fitScale = Math.min(
+      Math.max(1, viewport.clientWidth - padding * 2) / elements.imageViewerImage.naturalWidth,
+      Math.max(1, viewport.clientHeight - padding * 2) / elements.imageViewerImage.naturalHeight
+    );
+    const imageWidth = Math.round(elements.imageViewerImage.naturalWidth * fitScale * imageViewerZoom);
+    const imageHeight = Math.round(elements.imageViewerImage.naturalHeight * fitScale * imageViewerZoom);
+
+    elements.imageViewerImage.style.width = `${imageWidth}px`;
+    elements.imageViewerImage.style.height = `${imageHeight}px`;
+    elements.imageViewerCanvas.style.width = `${Math.max(viewport.clientWidth, imageWidth + padding * 2)}px`;
+    elements.imageViewerCanvas.style.height = `${Math.max(viewport.clientHeight, imageHeight + padding * 2)}px`;
+    elements.imageViewerImage.style.visibility = "visible";
+    elements.imageZoomLevel.textContent = `${Math.round(imageViewerZoom * 100)}%`;
+    elements.imageZoomOut.disabled = imageViewerZoom === imageZoomSteps[0];
+    elements.imageZoomIn.disabled = imageViewerZoom === imageZoomSteps.at(-1);
+
+    requestAnimationFrame(() => {
+      if (options?.preserveCenter) {
+        viewport.scrollLeft = oldCenterX * viewport.scrollWidth - viewport.clientWidth / 2;
+        viewport.scrollTop = oldCenterY * viewport.scrollHeight - viewport.clientHeight / 2;
+      } else {
+        viewport.scrollLeft = (viewport.scrollWidth - viewport.clientWidth) / 2;
+        viewport.scrollTop = (viewport.scrollHeight - viewport.clientHeight) / 2;
+      }
+    });
+  }
+
+  function setImageViewerZoom(nextZoom, options) {
+    imageViewerZoom = imageZoomSteps.includes(nextZoom) ? nextZoom : 1;
+    renderImageViewerZoom(options);
+  }
+
+  function stepImageViewerZoom(direction) {
+    const currentIndex = imageZoomSteps.indexOf(imageViewerZoom);
+    const nextIndex = Math.min(imageZoomSteps.length - 1, Math.max(0, currentIndex + direction));
+    setImageViewerZoom(imageZoomSteps[nextIndex], { preserveCenter: true });
+  }
+
+  function openImageViewer() {
+    const entry = findSpecies(state.selectedId);
+    if (!entry) return;
+
+    const localized = speciesText(entry);
+    elements.imageViewerCode.textContent = entry.code;
+    elements.imageViewerTitle.textContent = `${localized.name} · ${entry.scientificName}`;
+    elements.imageViewerImage.alt = t("specimenAlt", { name: localized.name });
+    elements.imageViewerImage.style.visibility = "hidden";
+    imageViewerZoom = 1;
+
+    if (!elements.imageViewer.open) elements.imageViewer.showModal();
+    if (elements.imageViewerImage.getAttribute("src") === entry.imagePath && elements.imageViewerImage.complete) {
+      requestAnimationFrame(() => renderImageViewerZoom());
+    } else {
+      elements.imageViewerImage.src = entry.imagePath;
+    }
+  }
+
+  function closeImageViewer() {
+    if (elements.imageViewer.open) elements.imageViewer.close();
   }
 
   function renderSources() {
@@ -726,8 +821,6 @@
       if (event.target.name === "protection") {
         if (event.target.checked) state.protection.add(event.target.value);
         else state.protection.delete(event.target.value);
-      } else if (event.target.name === "taxonomy-note") {
-        state.taxonomyNote = event.target.checked;
       } else {
         return;
       }
@@ -743,12 +836,16 @@
       const button = event.target.closest("[data-summary-filter]");
       if (!button) return;
       const token = button.dataset.summaryFilter;
-      const wasOnlyActive = token && state.protection.size === 1 && state.protection.has(token) && !state.taxonomyNote;
+      const wasOnlyActive = token && state.protection.size === 1 && state.protection.has(token);
       state.protection.clear();
-      state.taxonomyNote = false;
       if (token && !wasOnlyActive) state.protection.add(token);
       syncFilterInputs();
       renderResults();
+    });
+
+    elements.auditNoteToggle.addEventListener("click", () => {
+      state.auditTaxonomyOnly = !state.auditTaxonomyOnly;
+      renderAudit();
     });
 
     elements.cabinet.addEventListener("click", (event) => {
@@ -761,6 +858,9 @@
     elements.cabinet.addEventListener("keydown", handleOpenKey);
     elements.auditBody.addEventListener("click", handleOpenTarget);
     elements.auditBody.addEventListener("keydown", handleOpenKey);
+    elements.detailContent.addEventListener("click", (event) => {
+      if (event.target.closest("[data-open-image]")) openImageViewer();
+    });
 
     elements.closeDetail.addEventListener("click", () => closeDetail());
     elements.previousSpecies.addEventListener("click", () => moveDetail(-1));
@@ -772,6 +872,14 @@
 
     elements.openSources.addEventListener("click", openSources);
     elements.closeSources.addEventListener("click", closeSources);
+    elements.closeImageViewer.addEventListener("click", closeImageViewer);
+    elements.imageZoomOut.addEventListener("click", () => stepImageViewerZoom(-1));
+    elements.imageZoomReset.addEventListener("click", () => setImageViewerZoom(1));
+    elements.imageZoomIn.addEventListener("click", () => stepImageViewerZoom(1));
+    elements.imageViewerImage.addEventListener("load", () => renderImageViewerZoom());
+    elements.imageViewerImage.addEventListener("dblclick", () => {
+      setImageViewerZoom(imageViewerZoom === 1 ? 2 : 1, { preserveCenter: true });
+    });
     elements.languageToggle.addEventListener("click", () => {
       setLanguage(state.language === "en" ? "zh" : "en");
     });
@@ -780,11 +888,15 @@
     });
 
     window.addEventListener("hashchange", readHash);
+    window.addEventListener("resize", () => {
+      if (elements.imageViewer.open) renderImageViewerZoom();
+    });
     document.addEventListener("keydown", (event) => {
       const tagName = document.activeElement?.tagName;
       const isTyping = tagName === "INPUT" || tagName === "SELECT" || tagName === "TEXTAREA";
 
       if (event.key === "Escape") {
+        if (elements.imageViewer.open) return;
         if (elements.sourceDialog.open) closeSources();
         else if (document.body.classList.contains("filters-open")) closeMobileFilters();
         else if (state.selectedId) closeDetail();

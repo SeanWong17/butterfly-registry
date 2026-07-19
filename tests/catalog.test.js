@@ -19,7 +19,6 @@ function filters(overrides = {}) {
     genus: 'all',
     iucn: 'all',
     protection: new Set(),
-    taxonomyNote: false,
     sort: 'taxonomy',
     ...overrides
   };
@@ -51,7 +50,7 @@ test('search includes aliases, distribution, and taxonomy notes', () => {
   assert.equal(filterCatalog(species, filters({ query: '金裳凤蝶' })).some((entry) => entry.scientificName === 'Troides aeacus'), true);
 });
 
-test('protection filters use union semantics and combine with independent archive flags', () => {
+test('protection filters use union semantics and combine with genus selection', () => {
   const citesI = filterCatalog(species, filters({ protection: new Set(['cites-I']) }));
   assert.equal(citesI.length, 3);
 
@@ -65,18 +64,6 @@ test('protection filters use union semantics and combine with independent archiv
   assert.equal(chinaTroides.length, 7);
   assert.ok(chinaTroides.every((entry) => entry.genus === 'Troides'));
 
-  const taxonomyNotes = filterCatalog(species, filters({ taxonomyNote: true }));
-  assert.equal(taxonomyNotes.length, 8);
-  assert.ok(taxonomyNotes.every((entry) => entry.taxonomyNote));
-
-  const protectedTaxonomyNotes = filterCatalog(species, filters({
-    protection: new Set(['cites-II']),
-    taxonomyNote: true
-  }));
-  assert.ok(protectedTaxonomyNotes.length > 0);
-  assert.ok(protectedTaxonomyNotes.every((entry) => (
-    entry.protectionLevel?.cites === 'II' && entry.taxonomyNote
-  )));
 });
 
 test('taxonomy grouping preserves the source genus order', () => {

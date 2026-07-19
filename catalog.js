@@ -147,8 +147,6 @@
       if (!activeProtection.some((token) => speciesTokens.has(token))) return false;
     }
 
-    if (filters.taxonomyNote && !species.taxonomyNote) return false;
-
     return true;
   }
 

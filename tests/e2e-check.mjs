@@ -27,17 +27,11 @@ try {
       false,
     );
 
-    const flagGrouping = await page.locator('input[name="taxonomy-note"]').evaluate((input) => ({
-      legend: input.closest("fieldset")?.querySelector("legend")?.dataset.i18n,
-      insideProtection: Boolean(input.closest("fieldset")?.querySelector('input[name="protection"]')),
-    }));
-    assert.deepEqual(flagGrouping, { legend: "archiveFlags", insideProtection: false });
+    assert.equal(await page.locator('input[name="taxonomy-note"]').count(), 0);
+    assert.equal(await page.locator('legend[data-i18n="archiveFlags"]').count(), 0);
 
-    await setCheckbox(page, 'input[name="taxonomy-note"]');
-    assert.equal(await page.locator("#result-index").textContent(), "008");
     await setCheckbox(page, 'input[name="protection"][value="cites-II"]');
-    const combinedCount = Number(await page.locator("#result-index").textContent());
-    assert.ok(combinedCount > 0 && combinedCount < 8);
+    assert.equal(await page.locator("#result-index").textContent(), "048");
     await page.locator("#reset-filters").evaluate((button) => button.click());
 
     const firstRecord = page.locator(".specimen-drawer").first();
@@ -47,6 +41,26 @@ try {
     assert.equal(await page.locator("#detail-panel").getAttribute("aria-hidden"), "false");
     assert.match(await page.locator("#detail-content img").getAttribute("src"), /^images\//);
     if (viewport.name === "mobile") assert.equal(await page.evaluate(() => document.activeElement?.id), "close-detail");
+
+    await page.locator(".detail-image-button").click();
+    assert.equal(await page.locator("#image-viewer").getAttribute("open"), "");
+    assert.match(await page.locator("#image-viewer-image").getAttribute("src"), /^images\//);
+    await page.locator("#image-viewer-image").waitFor({ state: "visible" });
+    const initialImageWidth = await page.locator("#image-viewer-image").evaluate((image) => image.getBoundingClientRect().width);
+    await page.locator("#image-zoom-in").click();
+    const zoomedImageWidth = await page.locator("#image-viewer-image").evaluate((image) => image.getBoundingClientRect().width);
+    assert.ok(zoomedImageWidth > initialImageWidth);
+    assert.equal(await page.locator("#image-zoom-level").textContent(), "125%");
+    await page.locator("#image-zoom-reset").click();
+    assert.equal(await page.locator("#image-zoom-level").textContent(), "100%");
+    await page.keyboard.press("Escape");
+    assert.equal(await page.locator("#image-viewer").getAttribute("open"), null);
+
+    await page.locator(".detail-image-button").click();
+    await page.locator("#image-viewer-image").waitFor({ state: "visible" });
+    await page.locator("#close-image-viewer").click();
+    assert.equal(await page.locator("#image-viewer").getAttribute("open"), null);
+
     await page.keyboard.press("Escape");
     assert.equal(await page.locator("#detail-panel").getAttribute("aria-hidden"), "true");
     assert.equal(await page.locator("#detail-panel").getAttribute("inert"), "");
@@ -54,12 +68,17 @@ try {
 
     await page.locator('[data-view="audit"]').click();
     assert.equal(await page.locator("#audit-body tr").count(), 58);
+    await page.locator("#audit-note-toggle").click();
+    assert.equal(await page.locator("#audit-note-toggle").getAttribute("aria-pressed"), "true");
+    assert.equal(await page.locator("#audit-body tr").count(), 8);
     await page.locator("#language-toggle").click();
-    assert.equal(await page.locator('legend[data-i18n="archiveFlags"]').textContent(), "Archive flags");
+    assert.equal(await page.locator('[data-i18n="auditTaxonomyOnly"]').textContent(), "Review needed only");
     assert.equal(await page.evaluate(() => document.documentElement.lang), "en");
+    await page.locator("#audit-note-toggle").click();
+    assert.equal(await page.locator("#audit-body tr").count(), 58);
     assert.deepEqual(errors, []);
 
-    results.push({ viewport: viewport.name, combinedCount, errors: errors.length });
+    results.push({ viewport: viewport.name, auditNotes: 8, zoomedImageWidth, errors: errors.length });
     await page.close();
   }
 } finally {
