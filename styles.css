@@ -744,6 +744,7 @@ main {
   position: relative;
   aspect-ratio: 16 / 10;
   overflow: hidden;
+  padding: 7px;
   background: #fff;
 }
 
@@ -752,11 +753,6 @@ main {
   height: 100%;
   display: block;
   object-fit: contain;
-  transition: transform 220ms ease;
-}
-
-.specimen-drawer:hover .specimen-stage img {
-  transform: scale(1.035);
 }
 
 .protection-tabs,
