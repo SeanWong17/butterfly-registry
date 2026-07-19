@@ -1,12 +1,13 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta id="meta-description" name="description" content="翼录收录58个受保护蝴蝶名录条目，对照展示CITES、中国国家重点保护名录、IUCN记录与分类口径。">
-  <meta name="theme-color" content="#f4f6f2">
+  <meta id="theme-color" name="theme-color" content="#f4f6f2">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
   <title>翼录 | 受保护蝴蝶数字档案</title>
+  <script src="theme-init.js"></script>
   <link rel="stylesheet" href="styles.css">
   <script defer src="vendor/lucide.min.js"></script>
   <script defer src="data.js"></script>
@@ -27,11 +28,11 @@
     </a>
 
     <nav class="view-switch" aria-label="档案视图" data-i18n-aria="viewNavigation">
-      <button class="view-button is-active" type="button" data-view="cabinet" aria-pressed="true">
+      <button class="view-button is-active" type="button" data-view="cabinet" aria-pressed="true" aria-label="标本柜" data-i18n-aria="cabinet">
         <i data-lucide="archive" aria-hidden="true"></i>
         <span data-i18n="cabinet">标本柜</span>
       </button>
-      <button class="view-button" type="button" data-view="audit" aria-pressed="false">
+      <button class="view-button" type="button" data-view="audit" aria-pressed="false" aria-label="名录审计" data-i18n-aria="audit">
         <i data-lucide="table-2" aria-hidden="true"></i>
         <span data-i18n="audit">名录审计</span>
       </button>
@@ -42,11 +43,16 @@
         <i data-lucide="sliders-horizontal" aria-hidden="true"></i>
         <span class="sr-only" data-i18n="openFilters">打开筛选</span>
       </button>
+      <button class="icon-button theme-toggle" id="theme-toggle" type="button" title="切换至深色模式" aria-label="切换至深色模式" aria-pressed="false">
+        <i class="theme-icon-light" data-lucide="moon" aria-hidden="true"></i>
+        <i class="theme-icon-dark" data-lucide="sun" aria-hidden="true"></i>
+        <span class="sr-only" id="theme-label">切换至深色模式</span>
+      </button>
       <button class="language-button" id="language-toggle" type="button" title="Switch to English" aria-label="Switch to English">
         <i data-lucide="languages" aria-hidden="true"></i>
         <span id="language-label">EN</span>
       </button>
-      <button class="source-button" id="open-sources" type="button">
+      <button class="source-button" id="open-sources" type="button" title="数据说明" aria-label="数据说明" data-i18n-title="sources" data-i18n-aria="sources">
         <i data-lucide="book-open-text" aria-hidden="true"></i>
         <span data-i18n="sources">数据说明</span>
       </button>

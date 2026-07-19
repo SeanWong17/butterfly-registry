@@ -10,8 +10,14 @@ const browser = await chromium.launch({ headless: true });
 const results = [];
 
 try {
+  const systemDarkPage = await browser.newPage({ colorScheme: "dark" });
+  await systemDarkPage.goto(baseUrl, { waitUntil: "networkidle" });
+  assert.equal(await systemDarkPage.locator("html").getAttribute("data-theme"), "dark");
+  assert.equal(await systemDarkPage.locator("#theme-toggle").getAttribute("aria-pressed"), "true");
+  await systemDarkPage.close();
+
   for (const viewport of viewports) {
-    const page = await browser.newPage({ viewport });
+    const page = await browser.newPage({ viewport, colorScheme: "light" });
     const errors = [];
     page.on("console", (message) => {
       if (message.type() === "error") errors.push(`console: ${message.text()}`);
@@ -20,6 +26,16 @@ try {
     page.on("requestfailed", (request) => errors.push(`request: ${request.url()}`));
 
     await page.goto(baseUrl, { waitUntil: "networkidle" });
+    assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
+    assert.equal(await page.locator("#theme-toggle").getAttribute("aria-pressed"), "false");
+    assert.equal(await page.locator("#theme-toggle").getAttribute("aria-label"), "切换至深色模式");
+    await page.locator("#theme-toggle").click();
+    assert.equal(await page.locator("html").getAttribute("data-theme"), "dark");
+    assert.equal(await page.locator("#theme-toggle").getAttribute("aria-pressed"), "true");
+    assert.equal(await page.evaluate(() => window.localStorage.getItem("wing-register-theme")), "dark");
+    await page.reload({ waitUntil: "networkidle" });
+    assert.equal(await page.locator("html").getAttribute("data-theme"), "dark");
+    assert.equal(await page.locator("#theme-color").getAttribute("content"), "#101512");
     assert.equal(await page.locator(".specimen-drawer").count(), 58);
     assert.equal(await page.locator(".specimen-drawer img[src^='thumbnails/']").count(), 58);
     assert.equal(
@@ -74,11 +90,15 @@ try {
     await page.locator("#language-toggle").click();
     assert.equal(await page.locator('[data-i18n="auditTaxonomyOnly"]').textContent(), "Review needed only");
     assert.equal(await page.evaluate(() => document.documentElement.lang), "en");
+    assert.equal(await page.locator("#theme-toggle").getAttribute("aria-label"), "Switch to light mode");
     await page.locator("#audit-note-toggle").click();
     assert.equal(await page.locator("#audit-body tr").count(), 58);
+    await page.locator("#theme-toggle").click();
+    assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
+    assert.equal(await page.locator("#theme-color").getAttribute("content"), "#f4f6f2");
     assert.deepEqual(errors, []);
 
-    results.push({ viewport: viewport.name, auditNotes: 8, zoomedImageWidth, errors: errors.length });
+    results.push({ viewport: viewport.name, themePersistence: true, auditNotes: 8, zoomedImageWidth, errors: errors.length });
     await page.close();
   }
 } finally {

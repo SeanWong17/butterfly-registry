@@ -28,6 +28,7 @@
   const totals = utils.summarize(allSpecies);
   const state = {
     language: resolveInitialLanguage(),
+    theme: resolveInitialTheme(),
     view: "cabinet",
     query: "",
     family: "all",
@@ -78,6 +79,9 @@
     verifiedDate: document.getElementById("verified-date"),
     sourceList: document.getElementById("source-list"),
     metaDescription: document.getElementById("meta-description"),
+    themeColor: document.getElementById("theme-color"),
+    themeToggle: document.getElementById("theme-toggle"),
+    themeLabel: document.getElementById("theme-label"),
     languageToggle: document.getElementById("language-toggle"),
     languageLabel: document.getElementById("language-label"),
     imageViewer: document.getElementById("image-viewer"),
@@ -107,8 +111,36 @@
     return "zh";
   }
 
+  function resolveInitialTheme() {
+    return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+  }
+
   function t(key, values) {
     return i18n.translate(state.language, key, values);
+  }
+
+  function updateThemeToggle() {
+    const label = t(state.theme === "dark" ? "switchToLight" : "switchToDark");
+    elements.themeToggle.setAttribute("title", label);
+    elements.themeToggle.setAttribute("aria-label", label);
+    elements.themeToggle.setAttribute("aria-pressed", String(state.theme === "dark"));
+    elements.themeLabel.textContent = label;
+  }
+
+  function setTheme(theme, shouldPersist) {
+    state.theme = theme === "dark" ? "dark" : "light";
+    document.documentElement.dataset.theme = state.theme;
+    document.documentElement.style.colorScheme = state.theme;
+    elements.themeColor.setAttribute("content", state.theme === "dark" ? "#101512" : "#f4f6f2");
+    updateThemeToggle();
+
+    if (shouldPersist !== false) {
+      try {
+        window.localStorage.setItem("wing-register-theme", state.theme);
+      } catch (_) {
+        // Theme switching still works when storage is unavailable.
+      }
+    }
   }
 
   function speciesText(entry) {
@@ -200,6 +232,7 @@
     elements.languageLabel.textContent = t("language");
     elements.languageToggle.setAttribute("title", t("languageTitle"));
     elements.languageToggle.setAttribute("aria-label", t("languageTitle"));
+    updateThemeToggle();
   }
 
   function persistLanguage(language) {
@@ -872,6 +905,9 @@
 
     elements.openSources.addEventListener("click", openSources);
     elements.closeSources.addEventListener("click", closeSources);
+    elements.themeToggle.addEventListener("click", () => {
+      setTheme(state.theme === "dark" ? "light" : "dark");
+    });
     elements.closeImageViewer.addEventListener("click", closeImageViewer);
     elements.imageZoomOut.addEventListener("click", () => stepImageViewerZoom(-1));
     elements.imageZoomReset.addEventListener("click", () => setImageViewerZoom(1));
@@ -908,6 +944,7 @@
   }
 
   function initialize() {
+    setTheme(state.theme, false);
     localizeStaticContent();
     persistLanguage(state.language);
     populateTaxonomyFilters();
