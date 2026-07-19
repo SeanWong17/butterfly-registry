@@ -645,6 +645,8 @@ main {
 
 .cabinet {
   padding: 0 34px 54px;
+  container-name: specimen-cabinet;
+  container-type: inline-size;
 }
 
 .genus-shelf {
@@ -695,6 +697,24 @@ main {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: 12px;
+}
+
+@container specimen-cabinet (min-width: 1100px) {
+  .specimen-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@container specimen-cabinet (min-width: 1320px) {
+  .specimen-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@container specimen-cabinet (min-width: 2050px) {
+  .specimen-grid {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
 }
 
 .specimen-drawer {
