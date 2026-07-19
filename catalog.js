@@ -103,7 +103,6 @@
 
     if (level.cites) tokens.push(`cites-${level.cites}`);
     if (level.chinaLevel) tokens.push(`china-${level.chinaLevel}`);
-    if (species.taxonomyNote) tokens.push("taxonomy-note");
 
     return tokens;
   }
@@ -147,6 +146,8 @@
       const speciesTokens = new Set(getProtectionTokens(species));
       if (!activeProtection.some((token) => speciesTokens.has(token))) return false;
     }
+
+    if (filters.taxonomyNote && !species.taxonomyNote) return false;
 
     return true;
   }

@@ -18,7 +18,7 @@
 ## 功能
 
 - 标本柜与名录对照双视图
-- 保护等级、科、属和 IUCN 记录组合筛选
+- 保护框架、档案标记、科、属和 IUCN 记录组合筛选
 - 中英文名称、学名、分布和说明全文检索
 - 分类顺序、名称和保护优先级排序
 - 58 条物种详情及前后条目导航
@@ -37,9 +37,9 @@
 - [IUCN Red List](https://www.iucnredlist.org/)：核对页面中明确记录的受威胁等级与评估信息；空缺表示本页未记录，不等同于无危。
 - [Species+](https://speciesplus.net/)：补充核对国际贸易管控、分布与分类概念。
 
-图像资料来自项目搜集与公开网络参考，并使用绘图模型进行统一化和视觉优化。图片仅用于导览，不替代标本、检索表、科研鉴定或执法依据。
+现有导览图基于公开数据制作并统一处理，仅用于浏览展示。
 
-欢迎通过 [GitHub Issues](https://github.com/SeanWong17/butterfly-registry/issues) 指出名称、分布、保护等级、分类或图像错误，也欢迎提供可核验的参考图片及其原始链接。
+欢迎通过 [GitHub Issues](https://github.com/SeanWong17/butterfly-registry/issues) 指出名称、分布、保护等级、分类或图像错误。
 
 ## I18N 与本地运行
 
@@ -60,3 +60,7 @@ python3 -m http.server 4173
 ```bash
 npm test
 ```
+
+## 开源协议
+
+本项目采用 [MIT License](LICENSE)。

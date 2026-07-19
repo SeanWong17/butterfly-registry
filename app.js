@@ -34,10 +34,12 @@
     genus: "all",
     iucn: "all",
     protection: new Set(),
+    taxonomyNote: false,
     sort: "taxonomy",
     selectedId: ""
   };
   let visibleSpecies = allSpecies.slice();
+  let detailTrigger = null;
 
   const elements = {
     appFrame: document.getElementById("app-frame"),
@@ -282,8 +284,8 @@
 
     elements.summaryStrip.innerHTML = metrics.map((metric) => {
       const active = metric.token
-        ? state.protection.size === 1 && state.protection.has(metric.token)
-        : state.protection.size === 0;
+        ? state.protection.size === 1 && state.protection.has(metric.token) && !state.taxonomyNote
+        : state.protection.size === 0 && !state.taxonomyNote;
       return `
         <button class="summary-metric ${escapeHtml(metric.className)}" type="button"
           data-summary-filter="${escapeHtml(metric.token)}" aria-pressed="${active}">
@@ -325,8 +327,8 @@
           <span>${escapeHtml(entry.family)}</span>
         </div>
         <div class="specimen-stage">
-          <img src="${escapeHtml(entry.imagePath)}" alt="${escapeHtml(t("specimenAlt", { name: localized.name }))}"
-            loading="${loading}" decoding="async" width="1024" height="640">
+          <img src="${escapeHtml(thumbnailPath(entry.imagePath))}" alt="${escapeHtml(t("specimenAlt", { name: localized.name }))}"
+            loading="${loading}" decoding="async" width="512" height="320">
           <div class="protection-tabs">${protectionBadges(entry, true)}</div>
         </div>
         <div class="drawer-caption">
@@ -337,6 +339,10 @@
         ${entry.taxonomyNote ? `<span class="taxonomy-flag" title="${escapeHtml(t("taxonomyFlag"))}">${escapeHtml(t("taxonomyFlagShort"))}</span>` : ""}
       </article>
     `;
+  }
+
+  function thumbnailPath(imagePath) {
+    return imagePath.replace(/^images\//, "thumbnails/").replace(/\.jpe?g$/i, ".webp");
   }
 
   function renderCabinet() {
@@ -512,8 +518,10 @@
     const entry = findSpecies(id);
     if (!entry) return;
 
+    if (options?.trigger) detailTrigger = options.trigger;
     state.selectedId = id;
     renderDetail(entry);
+    elements.detailPanel.inert = false;
     elements.detailPanel.setAttribute("aria-hidden", "false");
     elements.appFrame.classList.add("detail-open");
     syncSelectedRows();
@@ -527,15 +535,18 @@
   }
 
   function closeDetail(options) {
+    const currentResults = state.view === "audit" ? elements.auditBody : elements.cabinet;
+    const selectedTarget = currentResults.querySelector(`[data-open="${state.selectedId}"]`);
+    const focusTarget = detailTrigger?.getClientRects().length ? detailTrigger : selectedTarget;
     state.selectedId = "";
     elements.detailPanel.setAttribute("aria-hidden", "true");
+    elements.detailPanel.inert = true;
     elements.appFrame.classList.remove("detail-open");
     syncSelectedRows();
     updateHash();
 
-    if (options?.restoreFocus) {
-      document.querySelector("[data-open].is-selected")?.focus();
-    }
+    if (options?.restoreFocus !== false && focusTarget?.isConnected) focusTarget.focus();
+    detailTrigger = null;
   }
 
   function syncSelectedRows() {
@@ -599,14 +610,15 @@
     if (match[2] && findSpecies(match[2])) {
       openDetail(match[2]);
     } else if (state.selectedId) {
-      closeDetail();
+      closeDetail({ restoreFocus: false });
     }
   }
 
-  function syncProtectionInputs() {
+  function syncFilterInputs() {
     elements.filterForm.querySelectorAll('input[name="protection"]').forEach((input) => {
       input.checked = state.protection.has(input.value);
     });
+    elements.filterForm.querySelector('input[name="taxonomy-note"]').checked = state.taxonomyNote;
   }
 
   function resetFilters() {
@@ -616,6 +628,7 @@
     state.genus = "all";
     state.iucn = "all";
     state.protection.clear();
+    state.taxonomyNote = false;
     state.sort = "taxonomy";
     elements.sort.value = state.sort;
     refreshGenusOptions();
@@ -667,7 +680,7 @@
   function handleOpenTarget(event) {
     const target = event.target.closest("[data-open]");
     if (!target) return;
-    openDetail(target.dataset.open, { focus: true });
+    openDetail(target.dataset.open, { focus: true, trigger: target });
   }
 
   function handleOpenKey(event) {
@@ -675,7 +688,7 @@
     const target = event.target.closest("[data-open]");
     if (!target) return;
     event.preventDefault();
-    openDetail(target.dataset.open, { focus: true });
+    openDetail(target.dataset.open, { focus: true, trigger: target });
   }
 
   function bindEvents() {
@@ -710,9 +723,14 @@
     });
 
     elements.filterForm.addEventListener("change", (event) => {
-      if (event.target.name !== "protection") return;
-      if (event.target.checked) state.protection.add(event.target.value);
-      else state.protection.delete(event.target.value);
+      if (event.target.name === "protection") {
+        if (event.target.checked) state.protection.add(event.target.value);
+        else state.protection.delete(event.target.value);
+      } else if (event.target.name === "taxonomy-note") {
+        state.taxonomyNote = event.target.checked;
+      } else {
+        return;
+      }
       renderResults();
     });
 
@@ -725,10 +743,11 @@
       const button = event.target.closest("[data-summary-filter]");
       if (!button) return;
       const token = button.dataset.summaryFilter;
-      const wasOnlyActive = token && state.protection.size === 1 && state.protection.has(token);
+      const wasOnlyActive = token && state.protection.size === 1 && state.protection.has(token) && !state.taxonomyNote;
       state.protection.clear();
+      state.taxonomyNote = false;
       if (token && !wasOnlyActive) state.protection.add(token);
-      syncProtectionInputs();
+      syncFilterInputs();
       renderResults();
     });
 

@@ -101,8 +101,12 @@
             <span data-i18n="chinaII">中国国家二级</span>
             <span class="filter-count" id="count-china-ii">0</span>
           </label>
+        </fieldset>
+
+        <fieldset class="filter-group archive-flag-group">
+          <legend data-i18n="archiveFlags">档案标记</legend>
           <label class="check-row">
-            <input type="checkbox" name="protection" value="taxonomy-note">
+            <input type="checkbox" name="taxonomy-note" value="taxonomy-note">
             <span class="status-dot taxonomy" aria-hidden="true"></span>
             <span data-i18n="taxonomyNotes">分类口径说明</span>
             <span class="filter-count" id="count-taxonomy">0</span>
@@ -207,7 +211,7 @@
       </section>
     </main>
 
-    <aside class="detail-panel" id="detail-panel" aria-label="物种档案详情" aria-hidden="true" data-i18n-aria="detailPanel">
+    <aside class="detail-panel" id="detail-panel" aria-label="物种档案详情" aria-hidden="true" data-i18n-aria="detailPanel" inert>
       <div class="detail-toolbar">
         <span id="detail-code">WR-000</span>
         <div class="detail-actions">
@@ -255,8 +259,8 @@
         <div class="source-list" id="source-list"></div>
       </section>
       <section>
-        <h3 data-i18n="imageOriginTitle">图像来源与反馈</h3>
-        <p data-i18n="imageOriginText">图像资料来自项目搜集与公开网络参考，并使用绘图模型进行统一化和视觉优化。图片仅用于导览，不替代标本、检索表、科研鉴定或执法依据。欢迎指出名称、分布、保护等级、分类或图像错误，也欢迎提供可核验的参考图片及其原始链接。</p>
+        <h3 data-i18n="imageOriginTitle">图像说明</h3>
+        <p data-i18n="imageOriginText">现有导览图基于公开数据制作并统一处理，仅用于浏览展示。</p>
       </section>
     </div>
   </dialog>

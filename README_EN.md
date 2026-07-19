@@ -18,7 +18,7 @@ The project currently contains 58 catalog entries and 58 consistently formatted 
 ## Features
 
 - Specimen cabinet and register cross-check views
-- Combined filters for protection framework, family, genus, and IUCN records
+- Combined filters for protection frameworks, archive flags, family, genus, and IUCN records
 - Full-text search across Chinese and English names, scientific names, ranges, and profiles
 - Taxonomic, common-name, scientific-name, and protection-priority sorting
 - Detailed records for all 58 entries with previous and next navigation
@@ -37,9 +37,9 @@ Non-image data is cross-checked primarily against these resources:
 - [IUCN Red List](https://www.iucnredlist.org/): threat categories and assessment details explicitly recorded in the archive; an empty field means not recorded here, not Least Concern.
 - [Species+](https://speciesplus.net/): supplementary checks on international trade controls, distribution, and taxon concepts.
 
-Images were assembled from project research and publicly available online references, then standardized and visually refined with drawing models. They are provided for orientation only and do not replace specimens, identification keys, scientific determinations, or enforcement evidence.
+The current guide images were produced from public data and standardized for display.
 
-Corrections to names, ranges, protection status, taxonomy, or imagery are welcome through [GitHub Issues](https://github.com/SeanWong17/butterfly-registry/issues). Verifiable reference images with their original links are also welcome.
+Corrections to names, ranges, protection status, taxonomy, or imagery are welcome through [GitHub Issues](https://github.com/SeanWong17/butterfly-registry/issues).
 
 ## I18N And Local Use
 
@@ -60,3 +60,7 @@ Open `http://127.0.0.1:4173/`. Run the data and application-logic tests with:
 ```bash
 npm test
 ```
+
+## License
+
+This project is released under the [MIT License](LICENSE).
