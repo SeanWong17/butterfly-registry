@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="翼录是一座收录58个受保护蝴蝶名录条目的数字标本柜，对照展示CITES、中国国家重点保护名录与分类口径。">
+  <meta name="theme-color" content="#f4f6f2">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <title>翼录 | 受保护蝴蝶数字档案</title>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="vendor/lucide.min.js"></script>
+  <script defer src="data.js"></script>
+  <script defer src="catalog.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
+
+  <header class="topbar">
+    <a class="brand" href="#/cabinet" aria-label="翼录首页">
+      <span class="brand-seal" aria-hidden="true">翼</span>
+      <span class="brand-copy">
+        <strong>翼录</strong>
+        <small>WING REGISTER · 受保护蝴蝶档案</small>
+      </span>
+    </a>
+
+    <nav class="view-switch" aria-label="档案视图">
+      <button class="view-button is-active" type="button" data-view="cabinet" aria-pressed="true">
+        <i data-lucide="archive" aria-hidden="true"></i>
+        <span>标本柜</span>
+      </button>
+      <button class="view-button" type="button" data-view="audit" aria-pressed="false">
+        <i data-lucide="table-2" aria-hidden="true"></i>
+        <span>名录审计</span>
+      </button>
+    </nav>
+
+    <div class="top-actions">
+      <button class="icon-button mobile-filter-button" id="open-filters" type="button" aria-controls="filter-panel" aria-expanded="false" title="打开筛选">
+        <i data-lucide="sliders-horizontal" aria-hidden="true"></i>
+        <span class="sr-only">打开筛选</span>
+      </button>
+      <button class="source-button" id="open-sources" type="button">
+        <i data-lucide="book-open-text" aria-hidden="true"></i>
+        <span>数据说明</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="app-frame" id="app-frame">
+    <aside class="filter-panel" id="filter-panel" aria-label="名录筛选">
+      <div class="panel-heading">
+        <div>
+          <span class="panel-kicker">CATALOG FILTER</span>
+          <h2>筛选</h2>
+        </div>
+        <button class="icon-button filter-close" id="close-filters" type="button" title="关闭筛选">
+          <i data-lucide="x" aria-hidden="true"></i>
+          <span class="sr-only">关闭筛选</span>
+        </button>
+      </div>
+
+      <form class="filter-form" id="filter-form">
+        <div class="search-field">
+          <label for="catalog-search">检索档案</label>
+          <div class="search-control">
+            <i data-lucide="search" aria-hidden="true"></i>
+            <input id="catalog-search" type="search" autocomplete="off" placeholder="中文名、学名、分布">
+          </div>
+        </div>
+
+        <fieldset class="filter-group">
+          <legend>保护框架</legend>
+          <label class="check-row">
+            <input type="checkbox" name="protection" value="cites-I">
+            <span class="status-dot cites-i" aria-hidden="true"></span>
+            <span>CITES 附录 I</span>
+            <span class="filter-count" id="count-cites-i">0</span>
+          </label>
+          <label class="check-row">
+            <input type="checkbox" name="protection" value="cites-II">
+            <span class="status-dot cites-ii" aria-hidden="true"></span>
+            <span>CITES 附录 II</span>
+            <span class="filter-count" id="count-cites-ii">0</span>
+          </label>
+          <label class="check-row">
+            <input type="checkbox" name="protection" value="china-I">
+            <span class="status-dot china-i" aria-hidden="true"></span>
+            <span>中国国家一级</span>
+            <span class="filter-count" id="count-china-i">0</span>
+          </label>
+          <label class="check-row">
+            <input type="checkbox" name="protection" value="china-II">
+            <span class="status-dot china-ii" aria-hidden="true"></span>
+            <span>中国国家二级</span>
+            <span class="filter-count" id="count-china-ii">0</span>
+          </label>
+          <label class="check-row">
+            <input type="checkbox" name="protection" value="taxonomy-note">
+            <span class="status-dot taxonomy" aria-hidden="true"></span>
+            <span>分类口径说明</span>
+            <span class="filter-count" id="count-taxonomy">0</span>
+          </label>
+        </fieldset>
+
+        <div class="filter-group select-group">
+          <label for="family-filter">科</label>
+          <select id="family-filter">
+            <option value="all">全部科</option>
+          </select>
+
+          <label for="genus-filter">属</label>
+          <select id="genus-filter">
+            <option value="all">全部属</option>
+          </select>
+
+          <label for="iucn-filter">IUCN 记录</label>
+          <select id="iucn-filter">
+            <option value="all">全部状态</option>
+            <option value="recorded">有评估记录</option>
+            <option value="unrecorded">本页未记录</option>
+            <option value="EN">EN · 濒危</option>
+            <option value="VU">VU · 易危</option>
+            <option value="NT">NT · 近危</option>
+            <option value="LC">LC · 无危</option>
+          </select>
+        </div>
+
+        <div class="filter-footer">
+          <p id="filter-summary" aria-live="polite">显示 58 / 58</p>
+          <button class="reset-button" id="reset-filters" type="reset">
+            <i data-lucide="rotate-ccw" aria-hidden="true"></i>
+            <span>重置</span>
+          </button>
+        </div>
+      </form>
+    </aside>
+
+    <button class="filter-scrim" id="filter-scrim" type="button" aria-label="关闭筛选"></button>
+
+    <main id="main-content" tabindex="-1">
+      <section class="catalog-view" id="cabinet-view" aria-labelledby="catalog-title">
+        <header class="collection-header">
+          <div class="collection-title">
+            <p class="eyebrow">COLLECTION 058 · VERIFIED 2026.07</p>
+            <h1 id="catalog-title">受保护蝴蝶数字档案</h1>
+            <p>以本页名录条目为统计单位，对照 CITES 与中国国家重点保护制度；分类争议与图像局限单独标记。</p>
+          </div>
+          <div class="summary-strip" id="summary-strip" aria-label="名录统计"></div>
+        </header>
+
+        <div class="collection-toolbar">
+          <div>
+            <span class="result-index" id="result-index">058</span>
+            <span class="result-label">件档案</span>
+          </div>
+          <label class="sort-control" for="sort-select">
+            <span>排列</span>
+            <select id="sort-select">
+              <option value="taxonomy">分类顺序</option>
+              <option value="chinese">中文名</option>
+              <option value="scientific">学名</option>
+              <option value="priority">保护优先</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="cabinet" id="specimen-cabinet" aria-live="polite"></div>
+      </section>
+
+      <section class="catalog-view audit-view" id="audit-view" aria-labelledby="audit-title" hidden>
+        <header class="audit-header">
+          <p class="eyebrow">REGISTER CROSS-CHECK</p>
+          <h1 id="audit-title">保护名录对照</h1>
+          <p>法定名录、国际公约与全球分类数据库并不总采用相同的物种边界。这里保留本页采用的口径，不把“覆盖条目数”误写为全球独立物种数。</p>
+        </header>
+
+        <div class="audit-key" aria-label="状态图例">
+          <span><i class="status-dot cites-i" aria-hidden="true"></i>CITES I</span>
+          <span><i class="status-dot cites-ii" aria-hidden="true"></i>CITES II</span>
+          <span><i class="status-dot china-i" aria-hidden="true"></i>中国一级</span>
+          <span><i class="status-dot china-ii" aria-hidden="true"></i>中国二级</span>
+          <span><i class="status-dot taxonomy" aria-hidden="true"></i>分类口径说明</span>
+        </div>
+
+        <div class="audit-table-wrap">
+          <table class="audit-table">
+            <thead>
+              <tr>
+                <th scope="col">档案</th>
+                <th scope="col">物种</th>
+                <th scope="col">CITES</th>
+                <th scope="col">中国名录</th>
+                <th scope="col">IUCN</th>
+                <th scope="col">分类口径</th>
+              </tr>
+            </thead>
+            <tbody id="audit-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <aside class="detail-panel" id="detail-panel" aria-label="物种档案详情" aria-hidden="true">
+      <div class="detail-toolbar">
+        <span id="detail-code">WR-000</span>
+        <div class="detail-actions">
+          <button class="icon-button" id="previous-species" type="button" title="上一件档案">
+            <i data-lucide="chevron-left" aria-hidden="true"></i>
+            <span class="sr-only">上一件档案</span>
+          </button>
+          <button class="icon-button" id="next-species" type="button" title="下一件档案">
+            <i data-lucide="chevron-right" aria-hidden="true"></i>
+            <span class="sr-only">下一件档案</span>
+          </button>
+          <button class="icon-button" id="close-detail" type="button" title="关闭档案">
+            <i data-lucide="x" aria-hidden="true"></i>
+            <span class="sr-only">关闭档案</span>
+          </button>
+        </div>
+      </div>
+      <div class="detail-scroll" id="detail-content"></div>
+    </aside>
+  </div>
+
+  <dialog class="source-dialog" id="source-dialog" aria-labelledby="source-title">
+    <div class="dialog-heading">
+      <div>
+        <p class="eyebrow">SCOPE &amp; PROVENANCE</p>
+        <h2 id="source-title">数据范围与来源</h2>
+      </div>
+      <button class="icon-button" id="close-sources" type="button" title="关闭数据说明">
+        <i data-lucide="x" aria-hidden="true"></i>
+        <span class="sr-only">关闭数据说明</span>
+      </button>
+    </div>
+    <div class="source-content">
+      <section>
+        <h3>统计口径</h3>
+        <p id="scope-note"></p>
+        <dl class="source-meta">
+          <div><dt>核验日期</dt><dd id="verified-date">—</dd></div>
+          <div><dt>名录条目</dt><dd>58</dd></div>
+          <div><dt>图像规格</dt><dd>1024 × 640 JPEG</dd></div>
+        </dl>
+      </section>
+      <section>
+        <h3>权威入口</h3>
+        <div class="source-list" id="source-list"></div>
+      </section>
+      <section>
+        <h3>使用边界</h3>
+        <p>导览图片包含既有资产、参考资料重绘与资料驱动复原，不能替代模式标本、检索表、科研鉴定或执法依据。IUCN 状态仅在原数据有明确核验记录时展示，空缺不等于“无危”。</p>
+        <div class="document-links">
+          <a href="DATA_SOURCES.md">完整数据审校记录</a>
+          <a href="IMAGE_SOURCES.md">图像来源与风险说明</a>
+        </div>
+      </section>
+    </div>
+  </dialog>
+
+  <noscript>此档案需要启用 JavaScript 才能执行筛选与详情浏览。</noscript>
+</body>
+</html>
